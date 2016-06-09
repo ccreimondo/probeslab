@@ -1,6 +1,7 @@
 from slabinfo_utils import *
 
-SLABINFO_PATH = "data_local/slabinfo.txt"   # default: /proc/slabinfo
+# SLABINFO_PATH = "/proc/slabinfo"    # default: /proc/slabinfo
+SLABINFO_PATH = "data_local/slabinfo.txt"
 
 
 def get_slabinfo():

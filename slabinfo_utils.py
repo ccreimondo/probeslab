@@ -1,5 +1,3 @@
-import json
-
 
 class SlabCache(object):
     """Objected line in /proc/slabinfo."""
@@ -29,12 +27,10 @@ class SlabCache(object):
         self.obj_size = 0
         self.objs_per_slab = 0
         self.pages_per_slab = 0
-
         # tunables
         self.limit = 0
         self.batch_count = 0
         self.shared_factor = 0
-
         # slabdata
         self.active_slabs = 0
         self.num_slabs = 0
