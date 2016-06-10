@@ -77,6 +77,12 @@ class SlabCache(object):
     def in_dict(self):
         return self.__dict__
 
+    def in_tuple(self):
+        return (self.name, self.active_objs, self.num_objs,
+                self.objs_per_slab, self.pages_per_slab,
+                self.limit, self.batch_count, self.shared_factor,
+                self.active_slabs, self.num_slabs, self.shared_avail,)
+
 
 def parse_slabinfo(slabinfo):
     lines = slabinfo.split('\n')
@@ -87,3 +93,63 @@ def parse_slabinfo(slabinfo):
             continue
         slab_caches.append(SlabCache(slabinfo_line))
     return slab_caches
+
+
+"""
+CREATE DATABASE slabinfos;
+CREATE USER 'slab'@'localhost' IDENTIFIED BY 'slab';
+GRANT ALL ON slabinfos.* TO 'slab'@'localhost';
+FLUSH PRIVILEGES;
+"""
+
+
+TABLE_TEMPLATE = """
+CREATE TABLE IF NOT EXISTS `{}` (
+  `timestamp` INT NOT NULL,
+  `name` VARCHAR(50) NOT NULL,
+  `active_objs` INT NOT NULL,
+  `num_objs` INT NOT NULL,
+  `objs_per_slab` INT NOT NULL,
+  `pages_per_slab` INT NOT NULL,
+  `limit` INT NOT NULL,
+  `batch_count` INT NOT NULL,
+  `shared_factor` INT NOT NULL,
+  `active_slabs` INT NOT NULL,
+  `num_slabs` INT NOT NULL,
+  `shared_avail` INT NOT NULL,
+  PRIMARY KEY (`timestamp`, `name`)
+)
+"""
+
+SQL_INSERT_TEMPLATE = """
+INSERT INTO {} VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+"""
+
+
+def dump_to_mariadb(slabinfos, table_name):
+    import mysql.connector as mariadb
+    conn = mariadb.connect(user='slab', password='slab', database='slabinfos')
+    # create table
+    cursor = conn.cursor()
+    cursor.execute(TABLE_TEMPLATE.format(table_name))
+    # insert data
+    values = []
+    for idx, slab_caches in enumerate(slabinfos):
+        for cache in slab_caches:
+            values.append((idx,) + cache.in_tuple())
+    cursor.executemany(SQL_INSERT_TEMPLATE.format(table_name), values)
+    conn.commit()
+    conn.close()
+
+
+def test():
+    slabinfo_lines = ["btrfs_delayed_data_ref      0      0    112   36    1 : "
+                      "tunables    0    0    0 : slabdata      0      0      0",
+                      "btrfs_extent_buffer      0      0    280   29    2 : "
+                      "tunables    0    0    0 : slabdata      0      0      0",]
+    slabinfos = [[SlabCache(each) for each in slabinfo_lines]]
+    dump_to_mariadb(slabinfos, "test")
+
+
+if __name__ == '__main__':
+    test()
